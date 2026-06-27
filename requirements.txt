@@ -1,0 +1,7 @@
+faster-whisper>=1.1.0
+sounddevice>=0.5.1
+numpy>=1.26,<2
+silero-vad>=5.3
+psutil>=6.1
+openai>=1.70
+pytest>=8.3
