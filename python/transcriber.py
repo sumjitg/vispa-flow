@@ -80,7 +80,7 @@ def _load_model(model_name: str):
 
     # Determine compute type
     # float16 on CUDA/Apple Silicon, int8 on CPU
-    compute_type = "auto"
+    compute_type = "int8"
 
     logger.info("Loading Whisper model: %s (compute=%s)", model_name, compute_type)
     _model = WhisperModel(model_name, device="auto", compute_type=compute_type)
