@@ -139,7 +139,11 @@ def handle_command(cmd: str, params: dict, conn: socket.socket):
 
 def handle_client(conn: socket.socket):
     """Read newline-delimited JSON commands from a connected client."""
-    logger.info("Client connected: %s:%d", *conn.getpeername())
+    try:
+        peer = conn.getpeername()
+        logger.info("Client connected: %s:%d", *peer)
+    except OSError:
+        logger.info("Client connected (peer unknown)")
 
     # Read initial one-time settings from env and send as config
     buffer = ""

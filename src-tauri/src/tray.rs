@@ -10,11 +10,17 @@
 
 
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, Runtime,
 };
 use log::info;
+
+// Pre-embed tinted tray icons at compile time
+const ICON_IDLE:         &[u8] = include_bytes!("../icons/tray-idle.png");
+const ICON_RECORDING:    &[u8] = include_bytes!("../icons/tray-recording.png");
+const ICON_TRANSCRIBING: &[u8] = include_bytes!("../icons/tray-transcribing.png");
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TrayState {
@@ -82,15 +88,29 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
 /// Update the tray icon and tooltip to reflect the new state.
 pub fn set_state(app: &AppHandle, state: TrayState) {
-    info!("Tray state → {:?}", state);
+    info!("Tray state -> {:?}", state);
 
     if let Some(tray) = app.tray_by_id("main") {
-        let tooltip = match state {
-            TrayState::Idle         => "Vispa Flow — Hold Ctrl+Alt+Space to dictate",
-            TrayState::Recording    => "Vispa Flow — 🔴 Recording…",
-            TrayState::Transcribing => "Vispa Flow — 🟡 Transcribing…",
+        let (icon_bytes, tooltip) = match state {
+            TrayState::Idle => (
+                ICON_IDLE,
+                "Vispa Flow - Hold Ctrl+Alt+Space to dictate",
+            ),
+            TrayState::Recording => (
+                ICON_RECORDING,
+                "Vispa Flow - Recording...",
+            ),
+            TrayState::Transcribing => (
+                ICON_TRANSCRIBING,
+                "Vispa Flow - Transcribing...",
+            ),
         };
+
         tray.set_tooltip(Some(tooltip)).ok();
+
+        if let Ok(icon) = Image::from_bytes(icon_bytes) {
+            tray.set_icon(Some(icon)).ok();
+        }
     }
 
     // Emit state to frontend for TrayPopup

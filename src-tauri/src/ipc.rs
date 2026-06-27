@@ -23,6 +23,8 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{db, injector, tray};
 
+use crate::{db, injector, tray};
+
 const PYTHON_HOST: &str = "127.0.0.1";
 const PYTHON_PORT: u16 = 51337;
 const CONNECT_RETRIES: u32 = 20;
@@ -39,50 +41,31 @@ pub fn start_python_sidecar(app: AppHandle) -> PythonSender {
 
     thread::spawn(move || {
         // --- 1. Spawn Python process ---
-        let python_exe = find_python_exe();
-        let script = find_python_script();
+        let (mut child, spawned) = spawn_sidecar_or_dev(&app);
 
-        info!("Spawning Python sidecar: {} {}", python_exe, script);
-
-        // Build environment from current settings
-        let settings = db::load_all();
-        let mut cmd = Command::new(&python_exe);
-        cmd.arg(&script).stdout(Stdio::piped()).stderr(Stdio::inherit());
-
-        for (key, value) in &settings {
-            let env_key = match key.as_str() {
-                "model_override"  => Some("MODEL_OVERRIDE"),
-                "use_cloud"       => Some("USE_CLOUD"),
-                "cloud_provider"  => Some("CLOUD_PROVIDER"),
-                "cloud_api_key"   => Some("CLOUD_API_KEY"),
-                "language"        => Some("LANGUAGE"),
-                "remove_fillers"  => Some("REMOVE_FILLERS"),
-                "warm_seconds"    => Some("WARM_SECONDS"),
-                _                 => None,
-            };
-            if let Some(ek) = env_key {
-                cmd.env(ek, value);
-            }
-        }
-
-        let mut child: Child = match cmd.spawn() {
-            Ok(c)  => c,
-            Err(e) => {
-                error!("Failed to spawn Python sidecar: {}", e);
-                notify_error(&app, &format!("Could not start Python AI service: {}", e));
+        let mut child = match child {
+            Some(c) => c,
+            None => {
+                error!("Failed to spawn Python sidecar.");
+                notify_error(&app, "Could not start Python AI service.");
                 return;
             }
         };
 
-        // Wait for "READY:" line on stdout
-        if let Some(stdout) = child.stdout.take() {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines().map_while(Result::ok) {
-                if line.starts_with("READY:") {
-                    info!("Python sidecar ready: {}", line);
-                    break;
+        // Wait for "READY:" line on stdout (skip if we used cmd.spawn directly)
+        if spawned {
+            if let Some(stdout) = child.stdout.take() {
+                let reader = BufReader::new(stdout);
+                for line in reader.lines().map_while(Result::ok) {
+                    if line.starts_with("READY:") {
+                        info!("Python sidecar ready: {}", line);
+                        break;
+                    }
                 }
             }
+        } else {
+            // Sidecar mode — wait 1s for TCP to be up
+            thread::sleep(Duration::from_millis(1000));
         }
 
         // --- 2. Connect to TCP socket with retries ---
@@ -208,6 +191,105 @@ fn handle_python_event(app: &AppHandle, obj: &Value) {
     }
 }
 
+/// Try spawning the bundled PyInstaller sidecar first, fall back to dev mode.
+/// Returns (child, is_dev_spawn) where is_dev_spawn=true means we need to read stdout.
+fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
+    // 1. Try bundled sidecar
+    let sidecar_path = find_sidecar_exe();
+    if std::path::Path::new(&sidecar_path).exists() {
+        info!("Using bundled sidecar: {}", sidecar_path);
+        let settings = db::load_all();
+        let mut cmd = Command::new(&sidecar_path);
+        cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
+
+        for (key, value) in &settings {
+            let env_key = match key.as_str() {
+                "model_override" => Some("MODEL_OVERRIDE"),
+                "use_cloud"      => Some("USE_CLOUD"),
+                "cloud_provider" => Some("CLOUD_PROVIDER"),
+                "cloud_api_key"  => Some("CLOUD_API_KEY"),
+                "language"       => Some("LANGUAGE"),
+                "remove_fillers" => Some("REMOVE_FILLERS"),
+                "warm_seconds"   => Some("WARM_SECONDS"),
+                _                => None,
+            };
+            if let Some(ek) = env_key {
+                cmd.env(ek, value);
+            }
+        }
+
+        match cmd.spawn() {
+            Ok(c) => return (Some(c), false),
+            Err(e) => error!("Failed to spawn bundled sidecar: {}", e),
+        }
+    }
+
+    // 2. Fall back to dev mode
+    let python_exe = find_python_exe();
+    let script = find_python_script();
+
+    info!("Spawning Python sidecar (dev): {} {}", python_exe, script);
+
+    let settings = db::load_all();
+    let mut cmd = Command::new(&python_exe);
+    cmd.arg(&script).stdout(Stdio::piped()).stderr(Stdio::inherit());
+
+    for (key, value) in &settings {
+        let env_key = match key.as_str() {
+            "model_override" => Some("MODEL_OVERRIDE"),
+            "use_cloud"      => Some("USE_CLOUD"),
+            "cloud_provider" => Some("CLOUD_PROVIDER"),
+            "cloud_api_key"  => Some("CLOUD_API_KEY"),
+            "language"       => Some("LANGUAGE"),
+            "remove_fillers" => Some("REMOVE_FILLERS"),
+            "warm_seconds"   => Some("WARM_SECONDS"),
+            _                => None,
+        };
+        if let Some(ek) = env_key {
+            cmd.env(ek, value);
+        }
+    }
+
+    match cmd.spawn() {
+        Ok(c) => (Some(c), true),
+        Err(e) => {
+            error!("Failed to spawn Python sidecar: {}", e);
+            notify_error(app, &format!("Could not start Python AI service: {}", e));
+            (None, true)
+        }
+    }
+}
+
+/// Find the bundled sidecar executable.
+fn find_sidecar_exe() -> std::path::PathBuf {
+    let triple = "x86_64-pc-windows-msvc";
+    let exe_name = format!("vispa-python-{}.exe", triple);
+
+    // Tauri bundles externalBin next to the main exe in the same directory
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(dir) = current_exe.parent() {
+            let candidate = dir.join(&exe_name);
+            if candidate.exists() {
+                return candidate;
+            }
+        }
+    }
+
+    // Dev fallback: check src-tauri/binaries/
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let candidates = vec![
+        cwd.join(format!("binaries/{}", exe_name)),
+        cwd.join(format!("../binaries/{}", exe_name)),
+    ];
+    for p in candidates {
+        if p.exists() {
+            return p;
+        }
+    }
+
+    exe_name.into()
+}
+
 fn find_python_exe() -> String {
     // In dev: prefer py launcher, then specific versions, then python
     for candidate in &["py", "python3.11", "python3.14", "python3", "python"] {
@@ -255,8 +337,7 @@ fn which_exists(name: &str) -> bool {
 }
 
 fn notify_error(app: &AppHandle, msg: &str) {
-    // Emit to frontend — tauri-plugin-notification can be wired here later
     if let Some(win) = app.get_webview_window("main") {
-        win.emit("vispa-error", msg).ok();
+        win.emit("vispa-notify", json!({ "body": msg })).ok();
     }
 }

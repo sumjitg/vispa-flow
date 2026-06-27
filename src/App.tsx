@@ -8,19 +8,19 @@ import TrayPopup from "./components/TrayPopup";
 export default function App() {
   useEffect(() => {
     const setup = async () => {
-      const unlisten = await listen<string>("vispa-error", async (event) => {
+      const unlistenNotify = await listen<{ body: string }>("vispa-notify", async (event) => {
         let granted = await isPermissionGranted();
         if (!granted) {
           const perm = await requestPermission();
           granted = perm === "granted";
         }
         if (granted) {
-          sendNotification({ title: "Vispa Flow", body: event.payload });
+          sendNotification({ title: "Vispa Flow", body: event.payload.body });
         }
       });
 
       return () => {
-        unlisten();
+        unlistenNotify();
       };
     };
 

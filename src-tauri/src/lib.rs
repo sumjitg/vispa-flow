@@ -90,6 +90,26 @@ pub fn run() {
                 hotkey::register_hotkey(&handle_for_hotkey, sender);
             });
 
+            // 6. Show startup balloon notification
+            let hotkey_str = db::get("hotkey");
+            let hotkey_str = if hotkey_str.is_empty() { "Ctrl+Alt+Space" } else { &hotkey_str };
+            let displayed_hotkey = hotkey_str
+                .split('+')
+                .map(|k| {
+                    let lower = k.trim();
+                    let mut c = lower.chars();
+                    match c.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" + ");
+            let msg = format!("Vispa Flow ready. Hold {} to dictate.", displayed_hotkey);
+            if let Some(win) = app.get_webview_window("main") {
+                win.emit("vispa-notify", serde_json::json!({ "body": msg })).ok();
+            }
+
             info!("Vispa Flow started.");
             Ok(())
         })
