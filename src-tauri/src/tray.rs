@@ -123,12 +123,11 @@ pub fn set_state(app: &AppHandle, state: TrayState) {
     }
 }
 
-fn show_settings_window(app: &AppHandle) {
+fn show_settings_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(win) = app.get_webview_window("settings") {
         win.show().ok();
         win.set_focus().ok();
     } else {
-        // Create settings window on demand
         let _ = tauri::WebviewWindowBuilder::new(
             app,
             "settings",
@@ -141,12 +140,11 @@ fn show_settings_window(app: &AppHandle) {
     }
 }
 
-/// Public alias so lib.rs can call show_settings_window.
-pub fn show_settings_window_pub(app: &AppHandle) {
+pub fn show_settings_window_pub<R: Runtime>(app: &AppHandle<R>) {
     show_settings_window(app);
 }
 
-fn show_tray_popup(app: &AppHandle) {
+fn show_tray_popup<R: Runtime>(app: &AppHandle<R>) {
     if let Some(win) = app.get_webview_window("popup") {
         if win.is_visible().unwrap_or(false) {
             win.hide().ok();

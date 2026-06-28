@@ -23,8 +23,6 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{db, injector, tray};
 
-use crate::{db, injector, tray};
-
 const PYTHON_HOST: &str = "127.0.0.1";
 const PYTHON_PORT: u16 = 51337;
 const CONNECT_RETRIES: u32 = 20;
@@ -41,7 +39,7 @@ pub fn start_python_sidecar(app: AppHandle) -> PythonSender {
 
     thread::spawn(move || {
         // --- 1. Spawn Python process ---
-        let (mut child, spawned) = spawn_sidecar_or_dev(&app);
+        let (child, spawned) = spawn_sidecar_or_dev(&app);
 
         let mut child = match child {
             Some(c) => c,
@@ -87,10 +85,32 @@ pub fn start_python_sidecar(app: AppHandle) -> PythonSender {
             Some(s) => s,
             None => {
                 error!("Could not connect to Python sidecar after {} retries.", CONNECT_RETRIES);
-                notify_error(&app, "Could not connect to Python AI service.");
+                notify_error(&app, "AI service not running - dictation unavailable");
                 return;
             }
         };
+
+        // Sidecar is connected — emit ready notification
+        {
+            let hotkey_str = crate::db::get("hotkey");
+            let hotkey_str = if hotkey_str.is_empty() { "Ctrl+Alt+Space" } else { &hotkey_str };
+            let displayed_hotkey = hotkey_str
+                .split('+')
+                .map(|k| {
+                    let lower = k.trim();
+                    let mut c = lower.chars();
+                    match c.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" + ");
+            let msg = format!("Ready. Hold {} to dictate.", displayed_hotkey);
+            if let Some(win) = app.get_webview_window("main") {
+                win.emit("vispa-notify", json!({ "body": msg })).ok();
+            }
+        }
 
         // Clone for reading
         let reader_stream = match stream.try_clone() {
@@ -133,7 +153,7 @@ pub fn send_cmd(sender: &PythonSender, cmd: &str) {
             error!("Failed to send '{}' to Python: {}", cmd, e);
         }
     } else {
-        warn!("send_cmd '{}': no Python connection.", cmd);
+        error!("send_cmd '{}': Python sidecar not connected.", cmd);
     }
 }
 
@@ -197,7 +217,7 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
     // 1. Try bundled sidecar
     let sidecar_path = find_sidecar_exe();
     if std::path::Path::new(&sidecar_path).exists() {
-        info!("Using bundled sidecar: {}", sidecar_path);
+        info!("Using bundled sidecar: {}", sidecar_path.display());
         let settings = db::load_all();
         let mut cmd = Command::new(&sidecar_path);
         cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());

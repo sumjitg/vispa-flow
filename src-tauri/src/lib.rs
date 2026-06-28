@@ -13,7 +13,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use log::info;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// App-level state accessible from Tauri commands.
 pub struct AppState {
@@ -52,6 +52,16 @@ pub fn run() {
                 .max_file_size(5_000_000)  // 5 MB
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
+                .targets([
+                    tauri_plugin_log::Target::new(
+                        tauri_plugin_log::TargetKind::LogDir {
+                            file_name: Some("vispa".to_string()),
+                        },
+                    ),
+                    tauri_plugin_log::Target::new(
+                        tauri_plugin_log::TargetKind::Stdout,
+                    ),
+                ])
                 .build(),
         )
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -89,26 +99,6 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_millis(1500));
                 hotkey::register_hotkey(&handle_for_hotkey, sender);
             });
-
-            // 6. Show startup balloon notification
-            let hotkey_str = db::get("hotkey");
-            let hotkey_str = if hotkey_str.is_empty() { "Ctrl+Alt+Space" } else { &hotkey_str };
-            let displayed_hotkey = hotkey_str
-                .split('+')
-                .map(|k| {
-                    let lower = k.trim();
-                    let mut c = lower.chars();
-                    match c.next() {
-                        None => String::new(),
-                        Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(" + ");
-            let msg = format!("Vispa Flow ready. Hold {} to dictate.", displayed_hotkey);
-            if let Some(win) = app.get_webview_window("main") {
-                win.emit("vispa-notify", serde_json::json!({ "body": msg })).ok();
-            }
 
             info!("Vispa Flow started.");
             Ok(())

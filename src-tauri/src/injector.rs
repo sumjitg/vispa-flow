@@ -42,7 +42,6 @@ pub fn inject_text(text: &str) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn clipboard_get_text() -> Option<String> {
-    use std::ptr;
     unsafe {
         // OpenClipboard(NULL)
         if open_clipboard_raw() == 0 {
