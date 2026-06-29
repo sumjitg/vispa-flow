@@ -113,6 +113,10 @@ def stop() -> np.ndarray | None:
 
         audio = np.concatenate(_buffer, axis=0)
 
+        # Flatten to 1D mono — sounddevice passes (frames, 1) even for mono
+        if audio.ndim > 1:
+            audio = audio.ravel()
+
         if len(audio) == 0:
             logger.info("Empty audio buffer.")
             return None

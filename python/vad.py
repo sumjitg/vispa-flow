@@ -58,6 +58,10 @@ def is_speech(audio_chunk: np.ndarray, sample_rate: int = 16000) -> bool:
         if audio_chunk.dtype != np.float32:
             audio_chunk = audio_chunk.astype(np.float32)
 
+        # Silero VAD requires 1D mono audio — flatten 2D/stereo arrays
+        if audio_chunk.ndim > 1:
+            audio_chunk = audio_chunk.ravel()
+
         timestamps = _get_speech_timestamps(audio_chunk, _model, sampling_rate=sample_rate)
         return len(timestamps) > 0
     except Exception as e:

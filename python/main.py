@@ -22,11 +22,19 @@ from recorder import start as recorder_start, stop as recorder_stop
 from cleaner import clean
 from ram_guard import get_model
 
-# Configure logging — stdout goes to Rust sidecar
+# Configure logging — write to a file in %APPDATA%\VispaFlow.
+# Stdout is reserved for the READY: protocol line and stderr for crash dumps.
+_log_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "VispaFlow")
+os.makedirs(_log_dir, exist_ok=True)
+_log_path = os.path.join(_log_dir, "vispa-python.log")
+
 logging.basicConfig(
     level=logging.DEBUG if os.environ.get("VISPA_DEBUG") else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    stream=sys.stdout,
+    handlers=[
+        logging.FileHandler(_log_path, encoding="utf-8"),
+        logging.StreamHandler(sys.stderr),
+    ],
 )
 logger = logging.getLogger("vispa")
 
