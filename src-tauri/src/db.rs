@@ -19,6 +19,7 @@ const DEFAULTS: &[(&str, &str)] = &[
     ("language",        "auto"),
     ("remove_fillers",  "true"),
     ("warm_seconds",    "60"),
+    ("autostart",       "true"),
 ];
 
 /// Return the path to config.db, creating parent dirs if needed.

@@ -125,7 +125,12 @@ def stop() -> np.ndarray | None:
     duration = len(audio) / SAMPLE_RATE
     logger.info("Recorded %.1fs of audio (%d samples).", duration, len(audio))
 
-    if is_speech(audio, SAMPLE_RATE):
+    t0 = time.perf_counter()
+    speech = is_speech(audio, SAMPLE_RATE)
+    vad_ms = (time.perf_counter() - t0) * 1000
+    logger.info("TIMING: vad=%s ms", round(vad_ms, 1))
+
+    if speech:
         return audio
 
     logger.info("VAD detected no speech — skipping transcription.")

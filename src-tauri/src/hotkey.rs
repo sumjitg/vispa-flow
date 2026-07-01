@@ -103,7 +103,9 @@ pub fn register_hotkey<R: Runtime>(app: &AppHandle<R>, sender: PythonSender) {
     if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |_app, _sc, event| {
         match event.state() {
             ShortcutState::Pressed  => crate::ipc::send_cmd(&sender_clone, "start_recording"),
-            ShortcutState::Released => crate::ipc::send_cmd(&sender_clone, "stop_recording"),
+            ShortcutState::Released => {
+                crate::ipc::send_cmd_with_timing(&sender_clone, "stop_recording");
+            }
         }
     }) {
         error!("Failed to register hotkey '{}': {}", hotkey_str, e);

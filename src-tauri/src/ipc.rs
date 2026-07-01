@@ -13,10 +13,13 @@ use std::{
     io::{BufRead, BufReader, Write},
     net::TcpStream,
     process::{Child, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, OnceLock},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use log::{error, info, warn};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
@@ -169,6 +172,76 @@ pub fn send_config(sender: &PythonSender, key: &str, value: &str) {
 }
 
 // ---------------------------------------------------------------------------
+// Timing instrumentation for end-to-end latency tracking
+// ---------------------------------------------------------------------------
+
+fn pending_timing() -> &'static Mutex<Option<(u64, Instant)>> {
+    static PENDING: OnceLock<Mutex<Option<(u64, Instant)>>> = OnceLock::new();
+    PENDING.get_or_init(|| Mutex::new(None))
+}
+
+/// Send a command with a request_id and start the latency timer.
+/// Returns the generated request_id.
+pub fn send_cmd_with_timing(sender: &PythonSender, cmd: &str) -> u64 {
+    let request_id = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_micros() as u64;
+
+    let mut guard = sender.lock().unwrap();
+    if let Some(ref mut stream) = *guard {
+        let msg = format!("{}\n", json!({ "cmd": cmd, "request_id": request_id.to_string() }));
+        if let Err(e) = stream.write_all(msg.as_bytes()) {
+            error!("Failed to send '{}' to Python: {}", cmd, e);
+        }
+    } else {
+        error!("send_cmd '{}': Python sidecar not connected.", cmd);
+    }
+
+    // Record the start time for this dictation
+    if let Ok(mut p) = pending_timing().lock() {
+        *p = Some((request_id, Instant::now()));
+    }
+
+    request_id
+}
+
+/// Log a complete per-dictation timing report.
+/// Called when the `transcribed` event arrives from Python.
+pub fn log_timing_report(request_id: u64, python_timing: &serde_json::Value) {
+    let total_rust = pending_timing().lock().map(|mut p| {
+        let elapsed = p.take().map(|(_, t0)| t0.elapsed());
+        elapsed
+    }).ok().flatten();
+
+    let total_ms = total_rust.map(|d| d.as_secs_f64() * 1000.0);
+
+    info!(
+        "=== DICTATION TIMING REPORT tid={} ===",
+        request_id
+    );
+
+    // Log Python-side stages
+    if let Some(stages) = python_timing.as_object() {
+        let mut sorted: Vec<_> = stages.iter().collect();
+        sorted.sort_by_key(|(k, _)| *k);
+        for (key, val) in &sorted {
+            if !key.ends_with("_cumulative") {
+                info!("  Python {}: {} ms", key, val);
+            }
+        }
+    }
+
+    // Log Rust-side total
+    if let Some(ms) = total_ms {
+        info!("  Rust total (hotkey → injection): {:.1} ms", ms);
+        info!("=== END DICTATION TIMING tid={} total={:.1}ms ===", request_id, ms);
+    } else {
+        info!("=== END DICTATION TIMING tid={} ===", request_id);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -177,11 +250,29 @@ fn handle_python_event(app: &AppHandle, obj: &Value) {
     match event {
         "transcribed" => {
             let text = obj.get("text").and_then(Value::as_str).unwrap_or("");
-            info!("Received transcribed: {:?}", text);
+            let timing = obj.get("timing");
+            // Extract request_id from the timing dict sent back by Python
+            let request_id = timing
+                .and_then(|t| t.get("request_id"))
+                .and_then(Value::as_str)
+                .unwrap_or("0")
+                .parse::<u64>()
+                .unwrap_or(0);
+
+            info!("Received transcribed: {:?} (tid={})", text, request_id);
+
             if !text.is_empty() {
+                let t_inject = Instant::now();
                 if let Err(e) = injector::inject_text(text) {
                     warn!("Injection failed: {}", e);
                 }
+                let inject_ms = t_inject.elapsed().as_secs_f64() * 1000.0;
+                info!("TIMING: injection={:.1} ms", inject_ms);
+            }
+
+            // Log the complete per-dictation timing report
+            if let Some(t) = timing {
+                log_timing_report(request_id, t);
             }
             // Also emit to frontend for potential display
             if let Some(win) = app.get_webview_window("main") {
@@ -221,6 +312,8 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
         let settings = db::load_all();
         let mut cmd = Command::new(&sidecar_path);
         cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000);
 
         for (key, value) in &settings {
             let env_key = match key.as_str() {
@@ -253,6 +346,8 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
     let settings = db::load_all();
     let mut cmd = Command::new(&python_exe);
     cmd.arg(&script).stdout(Stdio::piped()).stderr(Stdio::inherit());
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
 
     for (key, value) in &settings {
         let env_key = match key.as_str() {

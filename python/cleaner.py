@@ -9,6 +9,7 @@ Per agent.md:
 
 import os
 import re
+import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ def clean(text: str) -> str:
     if os.environ.get("REMOVE_FILLERS", "true").lower() != "true":
         return text
 
+    t0 = time.perf_counter()
     result = text
 
     # Remove filler words
@@ -63,5 +65,9 @@ def clean(text: str) -> str:
 
     # Trim leading/trailing whitespace
     result = result.strip()
+
+    clean_ms = (time.perf_counter() - t0) * 1000
+    if clean_ms > 0.5:
+        logger.info("TIMING: clean=%s ms", round(clean_ms, 1))
 
     return result

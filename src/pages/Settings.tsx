@@ -84,6 +84,7 @@ export default function Settings() {
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [captureMode, setCaptureMode] = useState(false);
+  const [autostart, setAutostart]     = useState(true);
 
   // Load all settings on mount
   useEffect(() => {
@@ -100,6 +101,14 @@ export default function Settings() {
         })
       );
       setSettings((prev) => ({ ...prev, ...loaded }));
+
+      // Load autostart state from DB
+      try {
+        const val = await invoke<string>("get_setting", { key: "autostart" });
+        setAutostart(val === "true");
+      } catch {
+        // Keep default (true)
+      }
     };
     load();
   }, []);
@@ -253,6 +262,28 @@ export default function Settings() {
             id="remove-fillers-toggle"
             value={settings.remove_fillers === "true"}
             onChange={(v) => update("remove_fillers", v ? "true" : "false")}
+          />
+        </div>
+
+        {/* Launch on startup */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-200">Launch on startup</p>
+            <p className="text-xs text-gray-500">Start Vispa Flow automatically when you log in</p>
+          </div>
+          <Toggle
+            id="autostart-toggle"
+            value={autostart}
+            onChange={async (v) => {
+              setAutostart(v);
+              try {
+                await invoke("cmd_toggle_autostart", { enabled: v });
+              } catch (e) {
+                console.error("Autostart toggle failed:", e);
+                // Revert on failure
+                setAutostart(!v);
+              }
+            }}
           />
         </div>
 

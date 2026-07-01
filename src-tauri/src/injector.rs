@@ -6,7 +6,7 @@
 //   - Wait 50ms before simulating paste to allow focus to settle.
 //   - Save clipboard content before injection, restore it after.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use log::{info, warn};
 
 /// Inject `text` into the currently focused window using clipboard + Ctrl+V.
@@ -15,18 +15,36 @@ pub fn inject_text(text: &str) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
+        let t0 = Instant::now();
+
         let saved = clipboard_get_text();
+        let t_clip_save = t0.elapsed();
+
         clipboard_set_text(text)?;
+        let t_clip_set = t0.elapsed();
+
         // Release all modifier keys first, then allow focus to settle
         release_modifiers();
         std::thread::sleep(Duration::from_millis(100));
         send_ctrl_v()?;
+        let t_sendinput = t0.elapsed();
+
         std::thread::sleep(Duration::from_millis(150));
         if let Some(prev) = saved {
             if let Err(e) = clipboard_set_text(&prev) {
                 warn!("Could not restore clipboard: {}", e);
             }
         }
+        let t_total = t0.elapsed();
+
+        info!(
+            "TIMING: injection clip_save={:.1}ms clip_set={:.1}ms sendinput={:.1}ms total={:.1}ms",
+            t_clip_save.as_secs_f64() * 1000.0,
+            t_clip_set.as_secs_f64() * 1000.0,
+            t_sendinput.as_secs_f64() * 1000.0,
+            t_total.as_secs_f64() * 1000.0,
+        );
+
         Ok(())
     }
 

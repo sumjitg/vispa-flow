@@ -112,17 +112,23 @@ def transcribe(audio: np.ndarray, model_name: str, language: str | None = None) 
         with _load_lock:
             # Load model if not loaded or if model name changed
             if _model is None or _model_name != model_name:
+                t_load = time.perf_counter()
                 if _model is not None:
                     _unload_hot()
                 _load_model(model_name)
+                load_ms = (time.perf_counter() - t_load) * 1000
+                logger.info("TIMING: model_load=%s ms", round(load_ms, 1))
 
         # Run transcription
         lang_kwargs = {}
         if language and language.lower() != "auto":
             lang_kwargs["language"] = language.lower()
 
+        t_inf = time.perf_counter()
         segments, _info = _model.transcribe(audio, beam_size=5, **lang_kwargs)
         text = " ".join(segment.text.strip() for segment in segments)
+        infer_ms = (time.perf_counter() - t_inf) * 1000
+        logger.info("TIMING: whisper_inference=%s ms", round(infer_ms, 1))
 
         _last_transcription_time = time.time()
 

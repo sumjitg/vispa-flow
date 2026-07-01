@@ -15,6 +15,7 @@ import json
 import socket
 import logging
 import threading
+import time
 
 import numpy as np
 
@@ -37,6 +38,54 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger("vispa")
+
+# ---------------------------------------------------------------------------
+# Timing instrumentation
+# ---------------------------------------------------------------------------
+_timings: dict | None = None  # active per-dictation timing dict
+
+
+def _timing_start(request_id: str):
+    """Initialise a fresh timing accumulator for this dictation."""
+    global _timings
+    _timings = {"request_id": request_id, "stages": {}, "t0": time.perf_counter()}
+
+
+def _timing_stage(name: str):
+    """Record the elapsed wall-clock time since the last stage (or t0).
+
+    Call _timing_stage("stage_name") at the END of each pipeline step.
+    """
+    global _timings
+    if _timings is None:
+        return
+    now = time.perf_counter()
+    elapsed_ms = (now - _timings.get("_last", _timings["t0"])) * 1000
+    cumulative_ms = (now - _timings["t0"]) * 1000
+    _timings["stages"][name] = round(elapsed_ms, 1)
+    _timings["stages"][f"{name}_cumulative"] = round(cumulative_ms, 1)
+    _timings["_last"] = now
+
+
+def _timing_report() -> str:
+    """Format the timing dict as a human-readable log line."""
+    global _timings
+    if _timings is None:
+        return ""
+    parts = [f"tid={_timings.get('request_id','?')}"]
+    stages = _timings.get("stages", {})
+    for key, val in sorted(stages.items()):
+        if not key.endswith("_cumulative"):
+            cum = stages.get(f"{key}_cumulative", "?")
+            parts.append(f"{key}={val}ms cum={cum}ms")
+    total = round((time.perf_counter() - _timings["t0"]) * 1000, 1)
+    parts.append(f"total_pipeline={total}ms")
+    return " | ".join(parts)
+
+
+def _timing_clear():
+    global _timings
+    _timings = None
 
 HOST = "127.0.0.1"
 PORT = 51337
@@ -65,13 +114,18 @@ def handle_command(cmd: str, params: dict, conn: socket.socket):
             send_event(conn, "state", value="idle")
 
     elif cmd == "stop_recording":
-        logger.info("Stopping recording…")
+        request_id = params.get("request_id", "")
+        _timing_start(request_id)
+        logger.info("Stopping recording… (tid=%s)", request_id)
+
         try:
             audio = recorder_stop()
+            _timing_stage("recorder_stop")
 
             if audio is None or (isinstance(audio, np.ndarray) and len(audio) == 0):
                 logger.info("No speech detected — skipping transcription.")
                 send_event(conn, "state", value="idle")
+                _timing_clear()
                 return
 
             send_event(conn, "state", value="transcribing")
@@ -104,15 +158,25 @@ def handle_command(cmd: str, params: dict, conn: socket.socket):
                     logger.error("Local transcription failed: %s", e)
                     send_event(conn, "error", message=f"Transcription failed: {e}")
                     send_event(conn, "state", value="idle")
+                    _timing_clear()
                     return
+
+            _timing_stage("whisper")
 
             # Clean filler words
             if text:
                 text = clean(text)
+            _timing_stage("clean")
+
+            # Build timing payload and log report
+            stage_timings = {k: v for k, v in _timings.get("stages", {}).items()
+                            if not k.startswith("_")}
+            logger.info("TIMING REPORT: %s", _timing_report())
 
             logger.info("Transcribed: %r", text)
-            send_event(conn, "transcribed", text=text)
+            send_event(conn, "transcribed", text=text, timing=stage_timings)
             send_event(conn, "state", value="idle")
+            _timing_clear()
 
         except Exception as e:
             logger.error("Unexpected error in stop_recording: %s", e, exc_info=True)

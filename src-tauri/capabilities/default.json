@@ -12,6 +12,7 @@
     "global-shortcut:allow-is-registered",
     "log:default",
     "notification:default",
-    "notification:allow-notify"
+    "notification:allow-notify",
+    "autostart:default"
   ]
 }
