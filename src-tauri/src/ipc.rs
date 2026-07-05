@@ -18,8 +18,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 use log::{error, info, warn};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
@@ -312,8 +310,6 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
         let settings = db::load_all();
         let mut cmd = Command::new(&sidecar_path);
         cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
-        #[cfg(target_os = "windows")]
-        cmd.creation_flags(0x08000000);
 
         for (key, value) in &settings {
             let env_key = match key.as_str() {
@@ -332,7 +328,7 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
         }
 
         match cmd.spawn() {
-            Ok(c) => return (Some(c), false),
+            Ok(c) => return (Some(c), true),
             Err(e) => error!("Failed to spawn bundled sidecar: {}", e),
         }
     }
@@ -346,8 +342,6 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
     let settings = db::load_all();
     let mut cmd = Command::new(&python_exe);
     cmd.arg(&script).stdout(Stdio::piped()).stderr(Stdio::inherit());
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(0x08000000);
 
     for (key, value) in &settings {
         let env_key = match key.as_str() {

@@ -9,8 +9,13 @@ Per agent.md:
   - On connection: print READY:<port> to stdout (Rust sidecar waits for this).
 """
 
-import os
 import sys
+if sys.stdout is None:
+    sys.stdout = open('nul', 'w')
+if sys.stderr is None:
+    sys.stderr = open('nul', 'w')
+
+import os
 import json
 import socket
 import logging
@@ -23,20 +28,6 @@ from recorder import start as recorder_start, stop as recorder_stop
 from cleaner import clean
 from ram_guard import get_model
 
-# Configure logging — write to a file in %APPDATA%\VispaFlow.
-# Stdout is reserved for the READY: protocol line and stderr for crash dumps.
-_log_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "VispaFlow")
-os.makedirs(_log_dir, exist_ok=True)
-_log_path = os.path.join(_log_dir, "vispa-python.log")
-
-logging.basicConfig(
-    level=logging.DEBUG if os.environ.get("VISPA_DEBUG") else logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler(_log_path, encoding="utf-8"),
-        logging.StreamHandler(sys.stderr),
-    ],
-)
 logger = logging.getLogger("vispa")
 
 # ---------------------------------------------------------------------------
@@ -254,21 +245,35 @@ def handle_client(conn: socket.socket):
 
 def main():
     """Start the TCP socket server and accept connections."""
-    # Print READY line to stdout — Rust sidecar waits for this
-    print(f"READY:listening on {HOST}:{PORT}", flush=True)
-
+    # 1. Create socket
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
+    # 2. Bind socket
     try:
         server.bind((HOST, PORT))
         server.listen(1)
-        logger.info("Vispa Flow Python sidecar ready on %s:%d", HOST, PORT)
     except OSError as e:
-        logger.critical("Failed to bind to %s:%d: %s", HOST, PORT, e)
-        # Print READY anyway so Rust doesn't hang forever
-        print(f"READY:failed to bind {e}", flush=True)
+        sys.stderr.write(f"FATAL: bind failed: {e}\n")
         sys.exit(1)
+
+    # 3. Print READY to stdout — Rust sidecar waits for this
+    print(f"READY:listening on {HOST}:{PORT}")
+    sys.stdout.flush()
+
+    # 4. Set up file-only logging (after READY, so stdout stays clean)
+    _log_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "VispaFlow")
+    os.makedirs(_log_dir, exist_ok=True)
+    _log_path = os.path.join(_log_dir, "vispa-python.log")
+
+    logging.basicConfig(
+        level=logging.DEBUG if os.environ.get("VISPA_DEBUG") else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler(_log_path, encoding="utf-8"),
+        ],
+    )
+    logger.info("Vispa Flow Python sidecar ready on %s:%d", HOST, PORT)
 
     try:
         while True:

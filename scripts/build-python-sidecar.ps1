@@ -6,7 +6,7 @@
 
 param(
     [string]$PythonExe = "python",
-    [string]$SpecFile = "python/vispa-flow.spec",
+    [string]$SpecFile = "python/vispa-python.spec",
     [string]$OutDir   = "src-tauri/binaries"
 )
 
