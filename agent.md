@@ -1,4 +1,4 @@
-# Vispa Flow — agent.md (v1)
+# VoiceType — agent.md (v1)
 
 ## What This App Is
 
@@ -65,7 +65,7 @@ Do not introduce any library outside this list without explicit approval.
 ## Project File Structure
 
 ```
-vispa-flow/
+voicetype/
 ├── src-tauri/                  # Rust / Tauri backend
 │   ├── src/
 │   │   ├── main.rs             # Tauri entry point
@@ -133,7 +133,7 @@ vispa-flow/
 - Left-click: show small TrayPopup React window.
 
 ### `db.rs`
-- Single SQLite file at `%APPDATA%\VispaFlow\config.db`.
+- Single SQLite file at `%APPDATA%\VoiceType\config.db`.
 - Create on first run if missing.
 - One table: `settings (key TEXT PRIMARY KEY, value TEXT)`.
 - Default rows inserted on first run (see Config Defaults below).
@@ -262,8 +262,8 @@ warm_seconds    = 60
 
 - **User-visible:** Windows toast notification for: mic not found, model download failed, hotkey conflict.
 - **Silent:** Injection failure, VAD edge cases — log only.
-- **Fatal crash:** Write to `%APPDATA%\VispaFlow\crash.log` before exit.
-- Log file: `%APPDATA%\VispaFlow\vispa.log`. Rotate at 5MB, keep 2 backups.
+- **Fatal crash:** Write to `%APPDATA%\VoiceType\crash.log` before exit.
+- Log file: `%APPDATA%\VoiceType\voicetype.log`. Rotate at 5MB, keep 2 backups.
 - Python logging: use stdlib `logging`. Rust logging: use `log` + `tauri-plugin-log`.
 
 ---
@@ -275,7 +275,7 @@ warm_seconds    = 60
 3. Auto-detect RAM → select model tier → store as active model.
 4. Whisper model is NOT downloaded yet — deferred to first hotkey use.
 5. Show tray icon in idle state.
-6. Show one balloon: `"Vispa Flow ready. Hold Ctrl+Alt+Space to dictate."`
+6. Show one balloon: `"VoiceType ready. Hold Ctrl+Alt+Space to dictate."`
 
 ---
 

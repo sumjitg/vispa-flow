@@ -83,7 +83,13 @@ def _load_model(model_name: str):
     compute_type = "int8"
 
     logger.info("Loading Whisper model: %s (compute=%s)", model_name, compute_type)
-    _model = WhisperModel(model_name, device="auto", compute_type=compute_type)
+    try:
+        # Prefer the local cache — no network request once the model is downloaded.
+        _model = WhisperModel(model_name, device="auto", compute_type=compute_type, local_files_only=True)
+    except Exception:
+        # First run: model not cached yet. Allow the one-time download.
+        logger.info("Model %s not cached locally — downloading (first run).", model_name)
+        _model = WhisperModel(model_name, device="auto", compute_type=compute_type, local_files_only=False)
     _model_name = model_name
     logger.info("Whisper model loaded: %s", model_name)
 
@@ -123,6 +129,12 @@ def transcribe(audio: np.ndarray, model_name: str, language: str | None = None) 
         lang_kwargs = {}
         if language and language.lower() != "auto":
             lang_kwargs["language"] = language.lower()
+
+        # Bias recognition toward custom dictionary terms
+        from dictionary import get_hotwords
+        hotwords = get_hotwords()
+        if hotwords:
+            lang_kwargs["hotwords"] = hotwords
 
         t_inf = time.perf_counter()
         segments, _info = _model.transcribe(audio, beam_size=5, **lang_kwargs)

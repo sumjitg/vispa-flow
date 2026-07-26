@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VoiceType vs Wispr Flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #05070d; }
+  .card {
+    width: 1200px; height: 675px;
+    background: radial-gradient(1200px 675px at 20% 0%, #0e1526 0%, #05070d 60%);
+    font-family: "Segoe UI", -apple-system, sans-serif;
+    color: #e8ecf4;
+    padding: 56px 72px 44px;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .eyebrow {
+    font-size: 17px; letter-spacing: 4px; text-transform: uppercase;
+    color: #7d8aa5; font-weight: 600; margin-bottom: 10px;
+  }
+  h1 { font-size: 44px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 34px; }
+  h1 .bad { color: #ff6b6b; }
+  h1 .good { color: #4ade80; }
+  table { width: 100%; border-collapse: collapse; flex: 1; }
+  th {
+    text-align: left; font-size: 21px; font-weight: 700; color: #aab6cc;
+    padding: 0 18px 14px; border-bottom: 1px solid #223047;
+  }
+  th.col { width: 33%; }
+  th .brand-them { color: #c8d0de; }
+  th .brand-us { color: #4ade80; }
+  td {
+    padding: 17px 18px; font-size: 22px; border-bottom: 1px solid #16203468;
+    vertical-align: middle;
+  }
+  td.label { color: #8b98b0; font-size: 19px; font-weight: 600; }
+  td.them { color: #d7dce6; }
+  td.us { color: #eafff2; font-weight: 700; }
+  td .big-bad { font-size: 30px; font-weight: 800; color: #ff6b6b; }
+  td .big-good { font-size: 30px; font-weight: 800; color: #4ade80; }
+  td .sub { font-size: 15px; color: #7d8aa5; font-weight: 400; display: block; margin-top: 2px; }
+  .us-col-bg { background: #0c1f1608; }
+  .footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 26px; font-size: 18px; color: #7d8aa5;
+  }
+  .footer .logo { font-weight: 800; font-size: 21px; color: #e8ecf4; }
+  .footer .logo span { color: #4ade80; }
+  .glow {
+    position: absolute; right: -120px; top: -120px; width: 420px; height: 420px;
+    background: radial-gradient(circle, #4ade8014 0%, transparent 70%);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="glow"></div>
+  <div class="eyebrow">Voice typing on Windows · 3-year cost</div>
+  <h1><span class="bad">$432+</span> &nbsp;vs&nbsp; <span class="good">$25. Once.</span></h1>
+  <table>
+    <tr>
+      <th></th>
+      <th class="col"><span class="brand-them">Wispr Flow</span></th>
+      <th class="col"><span class="brand-us">VoiceType</span></th>
+    </tr>
+    <tr>
+      <td class="label">Price</td>
+      <td class="them"><span class="big-bad">$144 / year</span><span class="sub">forever ($432+ over 3 years)</span></td>
+      <td class="us us-col-bg"><span class="big-good">~$25 lifetime</span><span class="sub">pay once, keep forever</span></td>
+    </tr>
+    <tr>
+      <td class="label">Your audio</td>
+      <td class="them">Sent to their cloud</td>
+      <td class="us us-col-bg">Never leaves your PC</td>
+    </tr>
+    <tr>
+      <td class="label">Source code</td>
+      <td class="them">Closed</td>
+      <td class="us us-col-bg">Open source · GPLv3</td>
+    </tr>
+    <tr>
+      <td class="label">Works offline</td>
+      <td class="them">No</td>
+      <td class="us us-col-bg">Yes — 100% local</td>
+    </tr>
+  </table>
+  <div class="footer">
+    <div class="logo">Voice<span>Type</span></div>
+    <div>local · open source · no subscription</div>
+  </div>
+</div>
+</body>
+</html>

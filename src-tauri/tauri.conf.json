@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Vispa Flow",
+  "productName": "VoiceType",
   "version": "0.1.0",
-  "identifier": "com.vispaflow.app",
+  "identifier": "com.voicetype.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Vispa Flow",
+        "title": "VoiceType",
         "width": 1,
         "height": 1,
         "visible": false,
@@ -30,7 +30,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi"],
+    "targets": ["nsis", "msi"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -39,9 +40,18 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "binaries/vispa-python"
+      "binaries/voicetype-python"
     ]
   },
   "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/sumjitg/vispa-flow/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5N0ZBREE0QjU2MkEyNDEKUldSQm9tSzFwSzEvYVFUQ2E3QzVoWFQ3blFuQlM5SElqK09VNFRqOHlZL2xKbkozSUZmcXJpa0sK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

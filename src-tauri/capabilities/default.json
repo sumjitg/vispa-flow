@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for all Vispa Flow windows",
+  "description": "Capability for all VoiceType windows",
   "windows": ["main", "settings", "popup"],
   "permissions": [
     "core:default",
@@ -13,6 +13,8 @@
     "log:default",
     "notification:default",
     "notification:allow-notify",
-    "autostart:default"
+    "autostart:default",
+    "updater:default",
+    "dialog:default"
   ]
 }

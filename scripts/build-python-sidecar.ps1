@@ -1,12 +1,12 @@
 # build-python-sidecar.ps1
 # Build the Python sidecar into a standalone .exe using PyInstaller.
-# Output: src-tauri/binaries/vispa-python-x86_64-pc-windows-msvc.exe
+# Output: src-tauri/binaries/voicetype-python-x86_64-pc-windows-msvc.exe
 #
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/build-python-sidecar.ps1
 
 param(
     [string]$PythonExe = "python",
-    [string]$SpecFile = "python/vispa-python.spec",
+    [string]$SpecFile = "python/voicetype-python.spec",
     [string]$OutDir   = "src-tauri/binaries"
 )
 
@@ -43,14 +43,14 @@ if ($LASTEXITCODE -ne 0) {
 # Rename output to match Tauri's expected sidecar naming convention
 # Tauri expects: <name>-<target_triple>.exe
 $targetTriple = "x86_64-pc-windows-msvc"
-$builtExe = Join-Path $outDir "vispa-python.exe"
-$expectedExe = Join-Path $outDir "vispa-python-${targetTriple}.exe"
+$builtExe = Join-Path $outDir "voicetype-python.exe"
+$expectedExe = Join-Path $outDir "voicetype-python-${targetTriple}.exe"
 
 if (Test-Path $expectedExe) {
     Remove-Item $expectedExe -Force
 }
 if (Test-Path $builtExe) {
-    Rename-Item $builtExe "vispa-python-${targetTriple}.exe"
+    Rename-Item $builtExe "voicetype-python-${targetTriple}.exe"
     Write-Host "Created: $expectedExe"
 } else {
     Write-Error "Built exe not found at: $builtExe"

@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python build artifacts
+build/
+python/build/
+python/dist/
+python/__pycache__/
+__pycache__/
+*.pyc
+
+# Bundled sidecar binaries (built by CI / build script)
+src-tauri/binaries/

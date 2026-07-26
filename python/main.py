@@ -1,4 +1,4 @@
-"""main.py — Python AI sidecar entry point for Vispa Flow.
+"""main.py — Python AI sidecar entry point for VoiceType.
 
 Per agent.md:
   - Start TCP socket server on 127.0.0.1:51337.
@@ -28,7 +28,7 @@ from recorder import start as recorder_start, stop as recorder_stop
 from cleaner import clean
 from ram_guard import get_model
 
-logger = logging.getLogger("vispa")
+logger = logging.getLogger("voicetype")
 
 # ---------------------------------------------------------------------------
 # Timing instrumentation
@@ -159,6 +159,12 @@ def handle_command(cmd: str, params: dict, conn: socket.socket):
                 text = clean(text)
             _timing_stage("clean")
 
+            # Apply custom dictionary replacements
+            if text:
+                from dictionary import apply_replacements
+                text = apply_replacements(text)
+            _timing_stage("dictionary")
+
             # Build timing payload and log report
             stage_timings = {k: v for k, v in _timings.get("stages", {}).items()
                             if not k.startswith("_")}
@@ -180,13 +186,14 @@ def handle_command(cmd: str, params: dict, conn: socket.socket):
         logger.info("Config update: %s = %s", key, value)
 
         env_map = {
-            "model_override": "MODEL_OVERRIDE",
-            "use_cloud":      "USE_CLOUD",
-            "cloud_provider": "CLOUD_PROVIDER",
-            "cloud_api_key":  "CLOUD_API_KEY",
-            "language":       "LANGUAGE",
-            "remove_fillers": "REMOVE_FILLERS",
-            "warm_seconds":   "WARM_SECONDS",
+            "model_override":    "MODEL_OVERRIDE",
+            "use_cloud":         "USE_CLOUD",
+            "cloud_provider":    "CLOUD_PROVIDER",
+            "cloud_api_key":     "CLOUD_API_KEY",
+            "language":          "LANGUAGE",
+            "remove_fillers":    "REMOVE_FILLERS",
+            "warm_seconds":      "WARM_SECONDS",
+            "custom_dictionary": "CUSTOM_DICTIONARY",
         }
 
         env_key = env_map.get(key)
@@ -262,18 +269,18 @@ def main():
     sys.stdout.flush()
 
     # 4. Set up file-only logging (after READY, so stdout stays clean)
-    _log_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "VispaFlow")
+    _log_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "VoiceType")
     os.makedirs(_log_dir, exist_ok=True)
-    _log_path = os.path.join(_log_dir, "vispa-python.log")
+    _log_path = os.path.join(_log_dir, "voicetype-python.log")
 
     logging.basicConfig(
-        level=logging.DEBUG if os.environ.get("VISPA_DEBUG") else logging.INFO,
+        level=logging.DEBUG if os.environ.get("VOICETYPE_DEBUG") else logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         handlers=[
             logging.FileHandler(_log_path, encoding="utf-8"),
         ],
     )
-    logger.info("Vispa Flow Python sidecar ready on %s:%d", HOST, PORT)
+    logger.info("VoiceType Python sidecar ready on %s:%d", HOST, PORT)
 
     try:
         while True:

@@ -41,24 +41,28 @@ impl TrayState {
 
 
 /// Build the tray icon and attach event handlers.
-pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
     let status_item = MenuItem::with_id(app, "status", "Status: idle", false, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+    let update_item = MenuItem::with_id(app, "check_updates", "Check for updates", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
-    let menu = Menu::with_items(app, &[&settings_item, &status_item, &sep, &quit_item])?;
+    let menu = Menu::with_items(app, &[&settings_item, &update_item, &status_item, &sep, &quit_item])?;
 
     let _tray = TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .tooltip("Vispa Flow — Hold Ctrl+Alt+Space to dictate")
+        .tooltip("VoiceType — Hold Ctrl+Alt+Space to dictate")
         .on_menu_event({
             let app_handle = app.clone();
             move |_tray, event| {
                 match event.id().as_ref() {
                     "settings" => {
                         show_settings_window(&app_handle);
+                    }
+                    "check_updates" => {
+                        crate::update::check_for_updates(&app_handle, false);
                     }
                     "quit" => {
                         info!("Quit from tray menu.");
@@ -94,15 +98,15 @@ pub fn set_state(app: &AppHandle, state: TrayState) {
         let (icon_bytes, tooltip) = match state {
             TrayState::Idle => (
                 ICON_IDLE,
-                "Vispa Flow - Hold Ctrl+Alt+Space to dictate",
+                "VoiceType - Hold Ctrl+Alt+Space to dictate",
             ),
             TrayState::Recording => (
                 ICON_RECORDING,
-                "Vispa Flow - Recording...",
+                "VoiceType - Recording...",
             ),
             TrayState::Transcribing => (
                 ICON_TRANSCRIBING,
-                "Vispa Flow - Transcribing...",
+                "VoiceType - Transcribing...",
             ),
         };
 
@@ -133,7 +137,7 @@ fn show_settings_window<R: Runtime>(app: &AppHandle<R>) {
             "settings",
             tauri::WebviewUrl::App("/#/settings".into()),
         )
-        .title("Vispa Flow — Settings")
+        .title("VoiceType — Settings")
         .inner_size(520.0, 620.0)
         .resizable(false)
         .build();
@@ -158,8 +162,8 @@ fn show_tray_popup<R: Runtime>(app: &AppHandle<R>) {
             "popup",
             tauri::WebviewUrl::App("/#/popup".into()),
         )
-        .title("Vispa Flow")
-        .inner_size(280.0, 180.0)
+        .title("VoiceType")
+        .inner_size(300.0, 214.0)
         .decorations(false)
         .always_on_top(true)
         .resizable(false)

@@ -1,5 +1,5 @@
 # tint-icons.ps1
-# Generate tinted tray icon variants for Vispa Flow.
+# Generate tinted tray icon variants for VoiceType.
 # Uses .NET System.Drawing to overlay color on the base 32x32.png icon.
 
 param(

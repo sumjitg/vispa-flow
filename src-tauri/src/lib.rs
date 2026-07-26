@@ -1,4 +1,4 @@
-// lib.rs — Tauri application entry point for Vispa Flow
+// lib.rs — Tauri application entry point for VoiceType
 //
 // Wires together: db, ipc, hotkey, tray, injector modules.
 // Exposes Tauri commands: get_setting, set_setting, re_register_hotkey.
@@ -8,6 +8,7 @@ mod hotkey;
 mod injector;
 mod ipc;
 mod tray;
+mod update;
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -21,7 +22,7 @@ pub struct AppState {
 }
 
 const AUTOSTART_REG_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
-const AUTOSTART_VALUE_NAME: &str = "Vispa Flow";
+const AUTOSTART_VALUE_NAME: &str = "VoiceType";
 
 /// Enable or disable autostart by writing directly to the Windows registry.
 /// Falls back to `reg.exe` if the windows crate API fails.
@@ -30,7 +31,7 @@ fn set_autostart_registry(enable: bool) -> Result<(), String> {
     let exe_str = exe.to_string_lossy();
 
     if enable {
-        // reg add HKCU\... /v "Vispa Flow" /d "\"C:\path\"" /f
+        // reg add HKCU\... /v "VoiceType" /d "\"C:\path\"" /f
         let value = format!("\"{}\"", exe_str);
         let output = std::process::Command::new("reg")
             .args(["add", AUTOSTART_REG_KEY, "/v", AUTOSTART_VALUE_NAME, "/d", &value, "/f"])
@@ -42,7 +43,7 @@ fn set_autostart_registry(enable: bool) -> Result<(), String> {
         }
         info!("Autostart REGISTRY: enabled -> {}", exe_str);
     } else {
-        // reg delete HKCU\... /v "Vispa Flow" /f
+        // reg delete HKCU\... /v "VoiceType" /f
         let output = std::process::Command::new("reg")
             .args(["delete", AUTOSTART_REG_KEY, "/v", AUTOSTART_VALUE_NAME, "/f"])
             .output()
@@ -119,7 +120,7 @@ pub fn run() {
                 .targets([
                     tauri_plugin_log::Target::new(
                         tauri_plugin_log::TargetKind::LogDir {
-                            file_name: Some("vispa".to_string()),
+                            file_name: Some("voicetype".to_string()),
                         },
                     ),
                     tauri_plugin_log::Target::new(
@@ -130,6 +131,8 @@ pub fn run() {
         )
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // --- Commands ---
         .invoke_handler(tauri::generate_handler![
             db::get_setting,
@@ -137,6 +140,7 @@ pub fn run() {
             cmd_re_register_hotkey,
             cmd_apply_setting,
             cmd_toggle_autostart,
+            cmd_check_for_updates,
         ])
         // --- Setup ---
         .setup(|app| {
@@ -168,7 +172,14 @@ pub fn run() {
                 hotkey::register_hotkey(&handle_for_hotkey, sender);
             });
 
-            info!("Vispa Flow started.");
+            // 7. Check for updates shortly after startup (silent unless one exists)
+            let handle_for_update = app_handle.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                update::check_for_updates(&handle_for_update, true);
+            });
+
+            info!("VoiceType started.");
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -178,6 +189,13 @@ pub fn run() {
 // ---------------------------------------------------------------------------
 // Additional Tauri commands
 // ---------------------------------------------------------------------------
+
+/// Check for updates on demand (from the tray menu). Reports result to the user.
+#[tauri::command]
+async fn cmd_check_for_updates(app: AppHandle) -> Result<(), String> {
+    update::check_for_updates(&app, false);
+    Ok(())
+}
 
 /// Re-register the global hotkey (called after hotkey setting is saved).
 #[tauri::command]

@@ -25,13 +25,12 @@ def _ensure_model():
         return
 
     try:
-        # Delay imports to avoid PyTorch import at module load time
-        import torch  # noqa: F401
+        # ONNX runtime — no PyTorch dependency (keeps the bundled sidecar small)
         from silero_vad import load_silero_vad, get_speech_timestamps
 
-        _model = load_silero_vad()
+        _model = load_silero_vad(onnx=True)
         _get_speech_timestamps = get_speech_timestamps
-        logger.info("Silero VAD model loaded.")
+        logger.info("Silero VAD model loaded (ONNX).")
     except Exception as e:
         logger.warning("Failed to load Silero VAD: %s. VAD will fail-open.", e)
 

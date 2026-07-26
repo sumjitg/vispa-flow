@@ -1,0 +1,100 @@
+name: Release
+
+# Build and publish a VoiceType release when a version tag is pushed.
+# Tag format: v0.1.1  (must match the version in tauri.conf.json / package.json)
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           contents of ~/.tauri/voicetype.key (updater signing, NOT code signing)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  the password chosen when generating the key
+#
+# Note: binaries are currently UNSIGNED (no Windows code-signing cert — $0 policy).
+# Beta users will see a SmartScreen warning. Plan: SignPath Foundation (free for OSS) at launch.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: python/requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Python sidecar
+        working-directory: python
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pyinstaller voicetype-python.spec --distpath ../src-tauri/binaries --noconfirm
+          # Rename to the target-triple name Tauri expects for externalBin
+          $triple = (rustc -Vv | Select-String "host:").ToString().Split(" ")[1]
+          Move-Item -Force "../src-tauri/binaries/voicetype-python.exe" "../src-tauri/binaries/voicetype-python-$triple.exe"
+        shell: pwsh
+
+      - name: Smoke-test sidecar binary
+        run: |
+          $exe = Get-ChildItem src-tauri/binaries/voicetype-python-*.exe | Select-Object -First 1
+          $p = Start-Process -FilePath $exe.FullName -PassThru -RedirectStandardOutput sidecar-out.txt -RedirectStandardError sidecar-err.txt
+          # Wait up to 60s for the READY line (imports numpy/faster-whisper on first boot)
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            if ((Get-Content sidecar-out.txt -Raw -ErrorAction SilentlyContinue) -match "READY:") { $ok = $true; break }
+            if ($p.HasExited) { break }
+          }
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          Get-Content sidecar-out.txt -ErrorAction SilentlyContinue
+          Get-Content sidecar-err.txt -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Error "Sidecar did not print READY"; exit 1 }
+        shell: pwsh
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "VoiceType ${{ github.ref_name }}"
+          releaseBody: |
+            ## VoiceType ${{ github.ref_name }}
+
+            Windows voice dictation — hold a hotkey, speak, release. Local-first, no subscription.
+
+            **Install:** download the `.msi` (or `.exe` NSIS installer) below and run it.
+            Windows may show a SmartScreen warning (the beta is not yet code-signed):
+            click **More info → Run anyway**.
+          releaseDraft: false
+          prerelease: false
+          # tauri-action generates latest.json (the updater manifest) automatically
+          # when createUpdaterArtifacts is enabled and signing keys are present.

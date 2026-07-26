@@ -1,4 +1,4 @@
-// hotkey.rs — Global hotkey registration for Vispa Flow
+// hotkey.rs — Global hotkey registration for VoiceType
 //
 // Per agent.md:
 //   - Register global hotkey (default: Ctrl+Alt+Space).

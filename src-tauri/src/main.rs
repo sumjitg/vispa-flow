@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    vispa_flow_lib::run()
+    voicetype_lib::run()
 }

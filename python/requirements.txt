@@ -1,0 +1,11 @@
+# VoiceType — Python sidecar runtime dependencies
+# Used by the release workflow to build the PyInstaller bundle.
+# NOTE: no torch — silero-vad runs via onnxruntime (keeps the bundle ~50MB, not ~3GB).
+
+faster-whisper
+sounddevice
+numpy
+silero-vad
+onnxruntime
+psutil
+openai

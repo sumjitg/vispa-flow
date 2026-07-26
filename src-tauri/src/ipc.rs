@@ -109,7 +109,7 @@ pub fn start_python_sidecar(app: AppHandle) -> PythonSender {
                 .join(" + ");
             let msg = format!("Ready. Hold {} to dictate.", displayed_hotkey);
             if let Some(win) = app.get_webview_window("main") {
-                win.emit("vispa-notify", json!({ "body": msg })).ok();
+                win.emit("voicetype-notify", json!({ "body": msg })).ok();
             }
         }
 
@@ -320,6 +320,7 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
                 "language"       => Some("LANGUAGE"),
                 "remove_fillers" => Some("REMOVE_FILLERS"),
                 "warm_seconds"   => Some("WARM_SECONDS"),
+                "custom_dictionary" => Some("CUSTOM_DICTIONARY"),
                 _                => None,
             };
             if let Some(ek) = env_key {
@@ -352,6 +353,7 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
             "language"       => Some("LANGUAGE"),
             "remove_fillers" => Some("REMOVE_FILLERS"),
             "warm_seconds"   => Some("WARM_SECONDS"),
+            "custom_dictionary" => Some("CUSTOM_DICTIONARY"),
             _                => None,
         };
         if let Some(ek) = env_key {
@@ -372,7 +374,7 @@ fn spawn_sidecar_or_dev(app: &AppHandle) -> (Option<Child>, bool) {
 /// Find the bundled sidecar executable.
 fn find_sidecar_exe() -> std::path::PathBuf {
     let triple = "x86_64-pc-windows-msvc";
-    let exe_name = format!("vispa-python-{}.exe", triple);
+    let exe_name = format!("voicetype-python-{}.exe", triple);
 
     // Tauri bundles externalBin next to the main exe in the same directory
     if let Ok(current_exe) = std::env::current_exe() {
@@ -380,6 +382,11 @@ fn find_sidecar_exe() -> std::path::PathBuf {
             let candidate = dir.join(&exe_name);
             if candidate.exists() {
                 return candidate;
+            }
+            // Installed builds may use the plain name without the target triple
+            let plain = dir.join("voicetype-python.exe");
+            if plain.exists() {
+                return plain;
             }
         }
     }
@@ -447,6 +454,6 @@ fn which_exists(name: &str) -> bool {
 
 fn notify_error(app: &AppHandle, msg: &str) {
     if let Some(win) = app.get_webview_window("main") {
-        win.emit("vispa-notify", json!({ "body": msg })).ok();
+        win.emit("voicetype-notify", json!({ "body": msg })).ok();
     }
 }

@@ -76,7 +76,7 @@ def transcribe_cloud(audio: np.ndarray, provider: str, api_key: str) -> str:
     wav_bytes = _audio_to_wav_bytes(audio, 16000)
 
     # Write to temp file
-    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="vispa_cloud_")
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="voicetype_cloud_")
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(wav_bytes)

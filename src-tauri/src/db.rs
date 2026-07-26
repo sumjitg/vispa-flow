@@ -1,6 +1,6 @@
-// db.rs — SQLite config read/write for Vispa Flow
+// db.rs — SQLite config read/write for VoiceType
 //
-// Single SQLite file at %APPDATA%\VispaFlow\config.db.
+// Single SQLite file at %APPDATA%\VoiceType\config.db.
 // Table: settings (key TEXT PRIMARY KEY, value TEXT)
 // Tauri commands: get_setting(key), set_setting(key, value)
 
@@ -20,20 +20,21 @@ const DEFAULTS: &[(&str, &str)] = &[
     ("remove_fillers",  "true"),
     ("warm_seconds",    "60"),
     ("autostart",       "true"),
+    ("custom_dictionary", ""),
 ];
 
 /// Return the path to config.db, creating parent dirs if needed.
 pub fn db_path() -> PathBuf {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".into());
-    let dir = PathBuf::from(appdata).join("VispaFlow");
+    let dir = PathBuf::from(appdata).join("VoiceType");
     std::fs::create_dir_all(&dir).ok();
     dir.join(DB_NAME)
 }
 
-/// Return the path to crash.log in %APPDATA%\VispaFlow.
+/// Return the path to crash.log in %APPDATA%\VoiceType.
 pub fn crash_log_path() -> PathBuf {
     let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".into());
-    let dir = PathBuf::from(appdata).join("VispaFlow");
+    let dir = PathBuf::from(appdata).join("VoiceType");
     std::fs::create_dir_all(&dir).ok();
     dir.join("crash.log")
 }

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Windows dictation gap</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #05070d; }
+  .card {
+    width: 1200px; height: 675px;
+    background: radial-gradient(1200px 675px at 80% 0%, #0e1526 0%, #05070d 60%);
+    font-family: "Segoe UI", -apple-system, sans-serif;
+    color: #e8ecf4;
+    padding: 52px 72px 40px;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .eyebrow {
+    font-size: 17px; letter-spacing: 4px; text-transform: uppercase;
+    color: #7d8aa5; font-weight: 600; margin-bottom: 8px;
+  }
+  h1 { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 28px; }
+  h1 em { font-style: normal; color: #fbbf24; }
+  table { width: 100%; border-collapse: collapse; flex: 1; }
+  th {
+    text-align: left; font-size: 18px; font-weight: 700; color: #aab6cc;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 0 16px 12px; border-bottom: 1px solid #223047;
+  }
+  td {
+    padding: 13px 16px; font-size: 20px; border-bottom: 1px solid #16203468;
+    color: #c8d0de; vertical-align: middle;
+  }
+  td.name { font-weight: 700; color: #e8ecf4; }
+  td .neg { color: #ff8787; }
+  td .pos { color: #4ade80; }
+  tr.gap td {
+    background: #1a150a;
+    border-top: 2px dashed #fbbf24; border-bottom: 2px dashed #fbbf24;
+    color: #fbbf24; font-weight: 700; font-size: 21px;
+    padding: 16px;
+  }
+  tr.gap td.name { color: #fbbf24; }
+  .arrow { font-size: 22px; font-weight: 800; color: #fbbf24; letter-spacing: 1px; }
+  .footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 22px; font-size: 18px; color: #7d8aa5;
+  }
+  .footer .logo { font-weight: 800; font-size: 21px; color: #e8ecf4; }
+  .footer .logo span { color: #4ade80; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow">Dictation apps · July 2026</div>
+  <h1>Mac has this figured out. <em>Windows doesn't.</em></h1>
+  <table>
+    <tr>
+      <th style="width:24%">Product</th>
+      <th style="width:20%">Platform</th>
+      <th style="width:30%">Price</th>
+      <th style="width:26%">Engine</th>
+    </tr>
+    <tr>
+      <td class="name">Wispr Flow</td>
+      <td>Mac / Win</td>
+      <td><span class="neg">$144+/yr subscription</span></td>
+      <td><span class="neg">Cloud only</span></td>
+    </tr>
+    <tr>
+      <td class="name">superwhisper</td>
+      <td>Mac (Win: early)</td>
+      <td><span class="neg">$8/mo</span> or lifetime</td>
+      <td>Local + cloud</td>
+    </tr>
+    <tr>
+      <td class="name">VoiceInk</td>
+      <td><span class="neg">Mac only</span></td>
+      <td><span class="pos">$25 lifetime</span> · open source</td>
+      <td><span class="pos">100% local</span></td>
+    </tr>
+    <tr>
+      <td class="name">Win+H built-in</td>
+      <td>Windows</td>
+      <td>Free</td>
+      <td><span class="neg">Mediocre, no polish</span></td>
+    </tr>
+    <tr class="gap">
+      <td class="name"><span class="arrow">→ THE GAP</span></td>
+      <td>Windows</td>
+      <td>$25 lifetime · open source</td>
+      <td>100% local</td>
+    </tr>
+  </table>
+  <div class="footer">
+    <div class="logo">Voice<span>Type</span> <span style="color:#7d8aa5;font-weight:400;font-size:17px">— building exactly this</span></div>
+    <div>local · open source · no subscription</div>
+  </div>
+</div>
+</body>
+</html>

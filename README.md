@@ -1,4 +1,4 @@
-# Vispa Flow — Windows Voice Dictation
+# VoiceType — Windows Voice Dictation
 
 Hold a hotkey, speak, release — clean text appears in whatever app is active. Free, local-first, no cloud required by default.
 
@@ -31,4 +31,4 @@ npm run tauri dev
 
 ## License
 
-MIT
+GPLv3 — see [LICENSE](LICENSE). Copyright (c) 2026 Soumyajit Ghosh.
